@@ -82,7 +82,7 @@ def format_message(_change):
 
 def command_handler(c, e):
     msg = e.arguments[0]
-    if msg == "!quit":
+    if msg == "!fezquit":
         c.privmsg(
             TARGET,
             colored(
