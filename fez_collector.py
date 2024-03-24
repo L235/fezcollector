@@ -101,7 +101,7 @@ def command_handler(c, e):
 def join_handler(c, e):
     source = e.source
     target = e.target
-    if CLOAK not in source:
+    if USERNAME in source and CLOAK not in source:
         print(CLOAK_ERROR_MSG)
         c.quit(CLOAK_ERROR_MSG)
         exit(1)
