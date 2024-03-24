@@ -86,7 +86,7 @@ def command_handler(c, e):
         c.privmsg(
             TARGET,
             colored(
-                "Failsafe command used, quitting. Please note, in my current alpha state I won't automatically restart. firefly_wp needs to manually restart me.",
+                "Failsafe command used, quitting - will be back shortly...",
                 "Light Red",
                 padding="",
             ),
