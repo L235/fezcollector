@@ -1,0 +1,4 @@
+pywikibot
+irc
+irccodes
+sseclient
