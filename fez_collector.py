@@ -5,84 +5,40 @@ from contextlib import redirect_stderr
 from os import devnull, environ
 from sys import exit, exc_info
 from datetime import datetime
+from json import loads
 
 from irc.client import Reactor, ServerConnectionError
 from irc.connection import Factory
 from irccodes import colored
 
 from pywikibot.comms.eventstreams import EventStreams
+from pywikibot import Site, Page
 
 TARGET = environ.get("FEZ_COLLECTOR_TARGET")
 USERNAME = environ.get("FEZ_COLLECTOR_USERNAME")
 PASSWORD = environ.get("FEZ_COLLECTOR_PASSWORD")
 CLOAK = environ.get("FEZ_COLLECTOR_CLOAK")
+CONFIG_PAGE = environ.get("FEZ_COLLECTOR_CONFIG_PAGE")
 ZWS = "\u200c"
-
 CLOAK_ERROR_MSG = (
     "Hmmm - I don't seem to have my cloak, something's gone wrong. Exiting!"
 )
 
-PAGE_INCLUDE_PATTERNS = [
-    "Module:ArbComOpenTasks.*",
-    "Template talk:Contentious topics.*",
-    "Template:@ArbCom.*",
-    "Template:ACArchiveNav",
-    "Template:ACImplNotes.*",
-    "Template:ACMajority.*",
-    "Template:ARCA.*",
-    "Template:ARMImplNotes.*",
-    "Template:Arb premature.*",
-    "Template:ArbCom.*",
-    "Template:ArbComOpenTasks.*",
-    "Template:Arbitration.*",
-    "Template:COVID19 CT editnotice",
-    "Template:COVID19 DS editnotice",
-    "Template:Casenav.*",
-    "Template:Contentious topics.*",
-    "Template:Ct/.*",
-    "Template:Ds/topics.*",
-    "Template:Editnotice contentious topic.*",
-    "Template:Editnotices/Page/Wikipedia( talk)?:Arbitration.*",
-    "Template:User arbclerk.*",
-    "User:AmoryBot/crathighlighter.js/arbcom.json",
-    "User:ArbClerkBot.*",
-    "User:Arbitration Committee.*",
-    "Wikipedia talk:Arbitration.*",
-    "Wikipedia( talk)?:Contentious topic.*",
-    "Wikipedia:AC/.*",
-    "Wikipedia:Arbitration.*",
-    "Wikipedia:Arbitration/Requests/Case/.*",
-    "Wikipedia:CT/AI",
-    "Wikipedia:Contentious topic.*",
-    "Wikipedia:Contentious topics.*",
-    "Wikipedia:Editing restrictions/Archive/Placed by the Arbitration Committee",
-    "Wikipedia:Editing restrictions/Placed by the Arbitration Committee",
-    "Wikipedia:Requests for arbitration.*",
-    "Wikipedia:Sandbox",
-]
+# pywikibot / config setup
+site = Site("en", "wikipedia")
+config_page = Page(site, CONFIG_PAGE)
+config = loads(config_page.get())
 
-PAGE_EXCLUDE_PATTERNS = [
-    "Template:ARCA Menards.*",
-    "Template:ARCA tracks",
-    "Template:Arcade Fire",
-    "Wikipedia( talk)?:Arbitration Committee Elections.*",
-    "Wikipedia( talk)?:Arbitration Committee/Requests for comment/.*",
-    "Wikipedia:Arbitration enforcement log.*",
-    "Wikipedia:Arbitration/Requests/Enforcement",
-]
-
-USER_EXCLUDE_LIST = ["AnomieBOT", "Lowercase sigmabot III", "WOSlinker", "WOSlinkerBot"]
-
-USER_INCLUDE_LIST = ["ArbClerkBot"]
-
-PAGE_INCLUDE_PATTERN = compile(f"({'|'.join(PAGE_INCLUDE_PATTERNS)})")
-PAGE_EXCLUDE_PATTERN = compile(f"({'|'.join(PAGE_EXCLUDE_PATTERNS)})")
+PAGE_INCLUDE_PATTERN = compile(f"({'|'.join(config['pageIncludePatterns'])})")
+PAGE_EXCLUDE_PATTERN = compile(f"({'|'.join(config['pageExcludePatterns'])})")
+USER_EXCLUDE_LIST = config["userExcludeList"]
+USER_INCLUDE_LIST = config["userIncludeList"]
 
 # EventStreams setup
 stream = EventStreams(
     streams=["recentchange", "revision-create"], since=datetime.now().isoformat()
 )
-stream.register_filter(server_name="en.wikipedia.org", type="edit")
+stream.register_filter(server_name="en.wikipedia.org")
 
 # IRC setup
 ssl_factory = Factory(wrapper=ssl.wrap_socket)
@@ -104,12 +60,23 @@ irc_c.join(TARGET)
 
 
 def format_message(_change):
-    s = f"{colored(_change['user'], 'Green', padding=ZWS)} edited {colored('[[','Grey', padding='')}{colored(_change['title'].strip(), 'Orange', padding='')}{colored(']]:','Grey', padding='')} {colored(_change['comment'], 'Cyan', padding='')} "
-    link = colored(
-        f"https://{_change['server_name']}/w/index.php?diff={_change['revision']['new']}",
-        "White",
-        padding="",
-    )
+    if _change["type"] == "log":
+        verb = _change["log_action_comment"].split(" ")[0]
+        link = colored(
+            f"https://{_change['server_name']}/w/index.php?title=Special:Log&logid={_change['log_id']}",
+            "White",
+            padding="",
+        )
+    else:
+        verb = "edited"
+        link = colored(
+            f"https://{_change['server_name']}/w/index.php?diff={_change['revision']['new']}",
+            "White",
+            padding="",
+        )
+
+    s = f"{colored(_change['user'], 'Green', padding=ZWS)} {verb} {colored('[[','Grey', padding='')}{colored(_change['title'].strip(), 'Orange', padding='')}{colored(']]:','Grey', padding='')} {colored(_change['comment'], 'Cyan', padding='')} "
+
     return s + link
 
 
