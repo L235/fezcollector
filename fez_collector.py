@@ -62,18 +62,10 @@ irc_c.join(TARGET)
 def format_message(_change):
     if _change["type"] == "log":
         verb = _change["log_action_comment"].split(" ")[0]
-        link = colored(
-            f"https://{_change['server_name']}/w/index.php?title=Special:Log&logid={_change['log_id']}",
-            "White",
-            padding="",
-        )
+        link = f"https://{_change['server_name']}/w/index.php?title=Special:Log&logid={_change['log_id']}"
     else:
         verb = "edited"
-        link = colored(
-            f"https://{_change['server_name']}/w/index.php?diff={_change['revision']['new']}",
-            "White",
-            padding="",
-        )
+        link = f"https://{_change['server_name']}/w/index.php?diff={_change['revision']['new']}"
 
     s = f"{colored(_change['user'], 'Green', padding=ZWS)} {verb} {colored('[[','Grey', padding='')}{colored(_change['title'].strip(), 'Orange', padding='')}{colored(']]:','Grey', padding='')} {colored(_change['comment'], 'Cyan', padding='')} "
 
