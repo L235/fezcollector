@@ -63,21 +63,14 @@ def block_flags_to_string(flags):
 
 def format_message(_change):
     actor = f"{colored(_change['user'], 'Green', padding=ZWS)}"
-    target = f"{colored('[[','Grey', padding='')}{colored(_change['title'].strip(), 'Orange', padding='')}{colored(']]','Grey', padding='')}"
-    _comment = f"{colored(_change['comment'], 'Cyan', padding='')}"
-    context = f"{colored(':','Grey', padding='')}"
-
     if _change["type"] == "log":
-        verb = _change["log_action_comment"].split(" ")[0]
         link = f"https://{_change['server_name']}/w/index.php?title=Special:Log&logid={_change['log_id']}"
-        if _change["log_action"] == "block":
-            partial = "(partially) " if not _change["log_params"]["sitewide"] else ""
-            context = f" {partial}with an expiry time of {_change['log_params']['duration']} ({block_flags_to_string(_change['log_params']['flags'])}){colored(':','Grey', padding='')}"
-    else:
-        verb = "edited"
-        link = f"https://{_change['server_name']}/w/index.php?diff={_change['revision']['new']}"
+        return f"{actor} {_change['log_action_comment']} {link}"
 
-    return f"{actor} {verb} {target}{context} {_comment} {link}"
+    target = f"{colored('[[','Grey', padding='')}{colored(_change['title'].strip(), 'Orange', padding='')}{colored(']]:','Grey', padding='')}"
+    _comment = f"{colored(_change['comment'], 'Cyan', padding='')}"
+    link = f"https://{_change['server_name']}/w/index.php?diff={_change['revision']['new']}"
+    return f"{actor} edited {target} {_comment} {link}"
 
 
 def command_handler(c, e):
