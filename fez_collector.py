@@ -1,7 +1,7 @@
 VERSION = "0.2"
 print(f"fez_collector {VERSION} initialising...")
 import ssl
-from re import search, compile
+from re import search, compile, RegexFlag
 from contextlib import redirect_stderr
 from os import devnull, environ
 from sys import exit, exc_info
@@ -34,25 +34,50 @@ site = Site("en", "wikipedia")
 config_page = Page(site, CONFIG_PAGE)
 config = loads(config_page.get())
 
-PAGE_INCLUDE_PATTERN = compile(f"({'|'.join(config['pageIncludePatterns'])})")
-PAGE_EXCLUDE_PATTERN = compile(f"({'|'.join(config['pageExcludePatterns'])})")
-SUMMARY_INCLUDE_PATTERN = compile(f"({'|'.join(config['summaryIncludePatterns'])})")
-SUMMARY_EXCLUDE_PATTERN = compile(f"({'|'.join(config['summaryExcludePatterns'])})")
+PAGE_INCLUDE_PATTERN = compile(
+    f"({'|'.join(config['pageIncludePatterns'])})", RegexFlag.IGNORECASE
+)
+PAGE_EXCLUDE_PATTERN = compile(
+    f"({'|'.join(config['pageExcludePatterns'])})", RegexFlag.IGNORECASE
+)
+SUMMARY_INCLUDE_PATTERN = compile(
+    f"({'|'.join(config['summaryIncludePatterns'])})", RegexFlag.IGNORECASE
+)
+SUMMARY_EXCLUDE_PATTERN = compile(
+    f"({'|'.join(config['summaryExcludePatterns'])})", RegexFlag.IGNORECASE
+)
 USER_EXCLUDE_LIST = config["userExcludeList"]
 USER_INCLUDE_LIST = config["userIncludeList"]
 
 
+def block_flags_to_string(flags):
+    return (
+        flags.replace("anononly", "anon. only")
+        .replace("noautoblock", "autoblock disabled")
+        .replace("nocreate", "account creation blocked")
+        .replace("noemail", "email disabled")
+        .replace("nousertalk", "talk page access disabled")
+        .replace(",", ", ")
+    )
+
+
 def format_message(_change):
+    actor = f"{colored(_change['user'], 'Green', padding=ZWS)}"
+    target = f"{colored('[[','Grey', padding='')}{colored(_change['title'].strip(), 'Orange', padding='')}{colored(']]','Grey', padding='')}"
+    _comment = f"{colored(_change['comment'], 'Cyan', padding='')}"
+    context = f"{colored(':','Grey', padding='')}"
+
     if _change["type"] == "log":
         verb = _change["log_action_comment"].split(" ")[0]
         link = f"https://{_change['server_name']}/w/index.php?title=Special:Log&logid={_change['log_id']}"
+        if _change["log_action"] == "block":
+            partial = "(partially) " if not _change["log_params"]["sitewide"] else ""
+            context = f" {partial}with an expiry time of {_change['log_params']['duration']} ({block_flags_to_string(_change['log_params']['flags'])}){colored(':','Grey', padding='')}"
     else:
         verb = "edited"
         link = f"https://{_change['server_name']}/w/index.php?diff={_change['revision']['new']}"
 
-    s = f"{colored(_change['user'], 'Green', padding=ZWS)} {verb} {colored('[[','Grey', padding='')}{colored(_change['title'].strip(), 'Orange', padding='')}{colored(']]:','Grey', padding='')} {colored(_change['comment'], 'Cyan', padding='')} "
-
-    return s + link
+    return f"{actor} {verb} {target}{context} {_comment} {link}"
 
 
 def command_handler(c, e):
