@@ -161,6 +161,5 @@ try:
             reactor.process_once()
 # Done to ensure we exit cleanly and the continuous job (on Toolforge) gets restarted
 except Exception as err:
-    irc_c.disconnect()
     print(err)
-    exit(1)
+    irc_c.disconnect()
