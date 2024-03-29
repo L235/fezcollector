@@ -24,6 +24,7 @@ USERNAME = environ.get("FEZ_COLLECTOR_USERNAME")
 PASSWORD = environ.get("FEZ_COLLECTOR_PASSWORD")
 CLOAK = environ.get("FEZ_COLLECTOR_CLOAK")
 CONFIG_PAGE = environ.get("FEZ_COLLECTOR_CONFIG_PAGE")
+USE_SASL = environ.get("FEZ_COLLECTOR_USE_SASL").lower() == "true"
 ZWS = "\u200c"
 CLOAK_ERROR_MSG = (
     "Hmmm - I don't seem to have my cloak, something's gone wrong. Exiting!"
@@ -132,7 +133,7 @@ try:
         username=USERNAME,
         password=PASSWORD,
         connect_factory=ssl_factory,
-        sasl_login=USERNAME,
+        sasl_login=(USERNAME if USE_SASL else None),
     )
 except ServerConnectionError as exc:
     print(exc_info()[1])
@@ -174,10 +175,15 @@ try:
                 or search(PAGE_INCLUDE_PATTERN, title)
                 or search(SUMMARY_INCLUDE_PATTERN, comment)
             ):
-                irc_c.privmsg(TARGET, format_message(change))
+                msg = format_message(change)
+                if len(msg) < 512:
+                    irc_c.privmsg(TARGET, msg)
+                else:
+                    print(f"Message greater than 512 characters, unable to send: {msg}")
 
             reactor.process_once()
 # Done to ensure we exit cleanly and the continuous job (on Toolforge) gets restarted
 except Exception as err:
     print(err)
     irc_c.disconnect()
+    reactor.process_once()
