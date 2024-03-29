@@ -24,7 +24,7 @@ USERNAME = environ.get("FEZ_COLLECTOR_USERNAME")
 PASSWORD = environ.get("FEZ_COLLECTOR_PASSWORD")
 CLOAK = environ.get("FEZ_COLLECTOR_CLOAK")
 CONFIG_PAGE = environ.get("FEZ_COLLECTOR_CONFIG_PAGE")
-USE_SASL = environ.get("FEZ_COLLECTOR_USE_SASL").lower() == "true"
+USE_SASL = environ.get("FEZ_COLLECTOR_USE_SASL") == "true"
 ZWS = "\u200c"
 CLOAK_ERROR_MSG = (
     "Hmmm - I don't seem to have my cloak, something's gone wrong. Exiting!"
