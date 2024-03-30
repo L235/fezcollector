@@ -1,10 +1,10 @@
-VERSION = "0.2"
+VERSION = "0.3"
 print(f"fez_collector {VERSION} initialising...")
 import ssl
 from re import search, compile, RegexFlag
 from contextlib import redirect_stderr
 from os import devnull, environ
-from sys import exit, exc_info
+from sys import exit, exc_info, stderr
 from datetime import datetime
 from json import loads
 from time import sleep
@@ -30,6 +30,8 @@ CLOAK_ERROR_MSG = (
     "Hmmm - I don't seem to have my cloak, something's gone wrong. Exiting!"
 )
 
+print(f"Using SASL? {USE_SASL}")
+
 # pywikibot / config setup
 site = Site("en", "wikipedia")
 config_page = Page(site, CONFIG_PAGE)
@@ -49,17 +51,6 @@ SUMMARY_EXCLUDE_PATTERN = compile(
 )
 USER_EXCLUDE_LIST = config["userExcludeList"]
 USER_INCLUDE_LIST = config["userIncludeList"]
-
-
-def block_flags_to_string(flags):
-    return (
-        flags.replace("anononly", "anon. only")
-        .replace("noautoblock", "autoblock disabled")
-        .replace("nocreate", "account creation blocked")
-        .replace("noemail", "email disabled")
-        .replace("nousertalk", "talk page access disabled")
-        .replace(",", ", ")
-    )
 
 
 def format_message(_change):
@@ -108,12 +99,17 @@ def nick_handler(c, e):
 
 
 def connect_handler(c, e):
+    print(f"Joining target channel {TARGET}...")
     irc_c.join(TARGET)
 
 
 def disconnect_handler(c, e):
     print("IRC disconnect - exiting...")
     exit(1)
+
+
+def event_logger(c, e):
+    print(f"Event received: {e}", file=stderr)
 
 
 # EventStreams setup
@@ -135,7 +131,7 @@ try:
         connect_factory=ssl_factory,
         sasl_login=(USERNAME if USE_SASL else None),
     )
-except ServerConnectionError as exc:
+except Exception as exc:
     print(exc_info()[1])
     raise exit(1) from exc
 
@@ -145,6 +141,7 @@ irc_c.add_global_handler("nicknameinuse", nick_handler)
 irc_c.add_global_handler("pubmsg", command_handler)
 irc_c.add_global_handler("join", join_handler)
 irc_c.add_global_handler("disconnect", disconnect_handler)
+irc_c.add_global_handler("all_events", event_logger, -10)
 
 reactor.process_once()
 print("initialised!")
@@ -153,6 +150,7 @@ try:
     # We do this as the EventStreams API dumps a metric crapload of 'errors' to stderr
     with redirect_stderr(open(devnull, "w", encoding="utf-8")):
         for change in iter(stream):
+            reactor.process_once()
             title = change["title"]
             user = change["user"]
             comment = (
@@ -180,10 +178,9 @@ try:
                     irc_c.privmsg(TARGET, msg)
                 else:
                     print(f"Message greater than 512 characters, unable to send: {msg}")
-
-            reactor.process_once()
 # Done to ensure we exit cleanly and the continuous job (on Toolforge) gets restarted
 except Exception as err:
     print(err)
     irc_c.disconnect()
     reactor.process_once()
+    exit(1)
