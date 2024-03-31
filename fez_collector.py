@@ -37,18 +37,26 @@ site = Site("en", "wikipedia")
 config_page = Page(site, CONFIG_PAGE)
 config = loads(config_page.get())
 
-PAGE_INCLUDE_PATTERN = compile(
-    f"({'|'.join(config['pageIncludePatterns'])})", RegexFlag.IGNORECASE
-) if len(config["pageIncludePatterns"]) > 0 else None
-PAGE_EXCLUDE_PATTERN = compile(
-    f"({'|'.join(config['pageExcludePatterns'])})", RegexFlag.IGNORECASE
-) if len(config["pageExcludePatterns"]) > 0 else None
-SUMMARY_INCLUDE_PATTERN = compile(
-    f"({'|'.join(config['summaryIncludePatterns'])})", RegexFlag.IGNORECASE
-)if len(config["summaryIncludePatterns"]) > 0 else None
-SUMMARY_EXCLUDE_PATTERN = compile(
-    f"({'|'.join(config['summaryExcludePatterns'])})", RegexFlag.IGNORECASE
-) if len(config["summaryExcludePatterns"]) > 0 else None
+PAGE_INCLUDE_PATTERN = (
+    compile(f"({'|'.join(config['pageIncludePatterns'])})", RegexFlag.IGNORECASE)
+    if len(config["pageIncludePatterns"]) > 0
+    else None
+)
+PAGE_EXCLUDE_PATTERN = (
+    compile(f"({'|'.join(config['pageExcludePatterns'])})", RegexFlag.IGNORECASE)
+    if len(config["pageExcludePatterns"]) > 0
+    else None
+)
+SUMMARY_INCLUDE_PATTERN = (
+    compile(f"({'|'.join(config['summaryIncludePatterns'])})", RegexFlag.IGNORECASE)
+    if len(config["summaryIncludePatterns"]) > 0
+    else None
+)
+SUMMARY_EXCLUDE_PATTERN = (
+    compile(f"({'|'.join(config['summaryExcludePatterns'])})", RegexFlag.IGNORECASE)
+    if len(config["summaryExcludePatterns"]) > 0
+    else None
+)
 
 USER_EXCLUDE_LIST = config["userExcludeList"]
 USER_INCLUDE_LIST = config["userIncludeList"]
@@ -67,8 +75,8 @@ def format_message(_change):
 
 
 def command_handler(c, e):
-    msg = e.arguments[0]
-    if msg == "!fezquit":
+    _msg = e.arguments[0]
+    if _msg == "!fezquit":
         c.privmsg(
             TARGET,
             colored(
@@ -78,7 +86,7 @@ def command_handler(c, e):
             ),
         )
         c.disconnect()
-    if msg == "!ping":
+    if _msg == "!ping":
         c.privmsg(TARGET, colored("pong", "Pink", padding=""))
 
 
@@ -106,7 +114,7 @@ def connect_handler(c, e):
 
 def disconnect_handler(c, e):
     print("IRC disconnect - exiting...")
-    exit(1)
+    raise SystemExit()
 
 
 def event_logger(c, e):
@@ -138,7 +146,7 @@ try:
     )
 except Exception as exc:
     print(exc_info()[1])
-    raise exit(1) from exc
+    raise SystemExit() from exc
 
 
 irc_c.add_global_handler("welcome", connect_handler)
@@ -150,43 +158,45 @@ irc_c.add_global_handler("ping", ping_handler)
 irc_c.add_global_handler("all_events", event_logger, -10)
 
 reactor.process_once()
-print("initialised!")
 
-try:
-    # We do this as the EventStreams API dumps a metric crapload of 'errors' to stderr
-    with redirect_stderr(open(devnull, "w", encoding="utf-8")):
-        for change in iter(stream):
-            reactor.process_once()
-            title = change["title"]
-            user = change["user"]
-            comment = (
-                change["log_action_comment"]
-                if "log_action_comment" in change
-                else change["comment"]
+# We do this as the EventStreams API dumps a metric crapload of 'errors' to stderr
+with redirect_stderr(open(devnull, "w", encoding="utf-8")):
+    for change in iter(stream):
+        reactor.process_once()
+        title = change["title"]
+        user = change["user"]
+        comment = (
+            change["log_action_comment"]
+            if "log_action_comment" in change
+            else change["comment"]
+        )
+
+        # Exclude rules - if any of these match, we're done
+        if (
+            user in USER_EXCLUDE_LIST
+            or (
+                PAGE_EXCLUDE_PATTERN is not None and search(PAGE_EXCLUDE_PATTERN, title)
             )
+            or (
+                SUMMARY_EXCLUDE_PATTERN is not None
+                and search(SUMMARY_EXCLUDE_PATTERN, comment)
+            )
+        ):
+            continue
 
-            # Exclude rules - if any of these match, we're done
-            if (
-                user in USER_EXCLUDE_LIST
-                or (PAGE_EXCLUDE_PATTERN is not None and search(PAGE_EXCLUDE_PATTERN, title))
-                or (SUMMARY_EXCLUDE_PATTERN is not None and search(SUMMARY_EXCLUDE_PATTERN, comment))
-            ):
-                continue
-
-            # Include rules - if any of these match, we post
-            if (
-                user in USER_INCLUDE_LIST
-                or (PAGE_INCLUDE_PATTERN is not None and search(PAGE_INCLUDE_PATTERN, title))
-                or (SUMMARY_INCLUDE_PATTERN is not None and search(SUMMARY_INCLUDE_PATTERN, comment))
-            ):
-                msg = format_message(change)
-                if len(msg) < 512:
-                    irc_c.privmsg(TARGET, msg)
-                else:
-                    print(f"Message greater than 512 characters, unable to send: {msg}")
-# Done to ensure we exit cleanly and the continuous job (on Toolforge) gets restarted
-except Exception as err:
-    print(err)
-    irc_c.disconnect()
-    reactor.process_once()
-    exit(1)
+        # Include rules - if any of these match, we post
+        if (
+            user in USER_INCLUDE_LIST
+            or (
+                PAGE_INCLUDE_PATTERN is not None and search(PAGE_INCLUDE_PATTERN, title)
+            )
+            or (
+                SUMMARY_INCLUDE_PATTERN is not None
+                and search(SUMMARY_INCLUDE_PATTERN, comment)
+            )
+        ):
+            msg = format_message(change)
+            if len(msg) < 512:
+                irc_c.privmsg(TARGET, msg)
+            else:
+                print(f"Message greater than 512 characters, unable to send: {msg}")
