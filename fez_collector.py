@@ -39,16 +39,17 @@ config = loads(config_page.get())
 
 PAGE_INCLUDE_PATTERN = compile(
     f"({'|'.join(config['pageIncludePatterns'])})", RegexFlag.IGNORECASE
-)
+) if len(config["pageIncludePatterns"]) > 0 else None
 PAGE_EXCLUDE_PATTERN = compile(
     f"({'|'.join(config['pageExcludePatterns'])})", RegexFlag.IGNORECASE
-)
+) if len(config["pageExcludePatterns"]) > 0 else None
 SUMMARY_INCLUDE_PATTERN = compile(
     f"({'|'.join(config['summaryIncludePatterns'])})", RegexFlag.IGNORECASE
-)
+)if len(config["summaryIncludePatterns"]) > 0 else None
 SUMMARY_EXCLUDE_PATTERN = compile(
     f"({'|'.join(config['summaryExcludePatterns'])})", RegexFlag.IGNORECASE
-)
+) if len(config["summaryExcludePatterns"]) > 0 else None
+
 USER_EXCLUDE_LIST = config["userExcludeList"]
 USER_INCLUDE_LIST = config["userIncludeList"]
 
@@ -162,16 +163,16 @@ try:
             # Exclude rules - if any of these match, we're done
             if (
                 user in USER_EXCLUDE_LIST
-                or search(PAGE_EXCLUDE_PATTERN, title)
-                or search(SUMMARY_EXCLUDE_PATTERN, comment)
+                or (PAGE_EXCLUDE_PATTERN is not None and search(PAGE_EXCLUDE_PATTERN, title))
+                or (SUMMARY_EXCLUDE_PATTERN is not None and search(SUMMARY_EXCLUDE_PATTERN, comment))
             ):
                 continue
 
             # Include rules - if any of these match, we post
             if (
                 user in USER_INCLUDE_LIST
-                or search(PAGE_INCLUDE_PATTERN, title)
-                or search(SUMMARY_INCLUDE_PATTERN, comment)
+                or (PAGE_INCLUDE_PATTERN is not None and search(PAGE_INCLUDE_PATTERN, title))
+                or (SUMMARY_INCLUDE_PATTERN is not None and search(SUMMARY_INCLUDE_PATTERN, comment))
             ):
                 msg = format_message(change)
                 if len(msg) < 512:
