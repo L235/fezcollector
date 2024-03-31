@@ -113,6 +113,10 @@ def event_logger(c, e):
     print(f"Event received: {e}", file=stderr)
 
 
+def ping_handler(c, e):
+    c.pong(e.target)
+
+
 # EventStreams setup
 stream = EventStreams(
     streams=["recentchange", "revision-create"], since=datetime.now().isoformat()
@@ -142,6 +146,7 @@ irc_c.add_global_handler("nicknameinuse", nick_handler)
 irc_c.add_global_handler("pubmsg", command_handler)
 irc_c.add_global_handler("join", join_handler)
 irc_c.add_global_handler("disconnect", disconnect_handler)
+irc_c.add_global_handler("ping", ping_handler)
 irc_c.add_global_handler("all_events", event_logger, -10)
 
 reactor.process_once()
