@@ -29,6 +29,7 @@ ZWS = "\u200c"
 CLOAK_ERROR_MSG = (
     "Hmmm - I don't seem to have my cloak, something's gone wrong. Exiting!"
 )
+STALENESS_THRESHOLD_SECONDS = 2 * 60 * 60
 
 print(f"Using SASL? {USE_SASL}")
 
@@ -163,6 +164,13 @@ reactor.process_once()
 with redirect_stderr(open(devnull, "w", encoding="utf-8")):
     for change in iter(stream):
         reactor.process_once()
+
+        timestamp = float(change["timestamp"])
+        now = datetime.now().timestamp()
+
+        if (now - STALENESS_THRESHOLD_SECONDS) > timestamp:
+            continue
+
         title = change["title"]
         user = change["user"]
         comment = (
