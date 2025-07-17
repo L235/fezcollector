@@ -133,12 +133,26 @@ stream = EventStreams(
 stream.register_filter(server_name="en.wikipedia.org")
 
 # IRC setup
-ssl_factory = Factory(wrapper=ssl.wrap_socket)
+# Use an SSLContext (modern, validated TLS) instead of deprecated ssl.wrap_socket.
+# Having the host in a variable lets us pass SNI correctly.
+IRC_HOST = "irc.libera.chat"
+IRC_PORT = 6697
+
+ssl_context = ssl.create_default_context()
+# Optional hardening examples (uncomment / adjust as needed):
+# ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+# ssl_context.set_ciphers("HIGH:!aNULL:!MD5")
+
+# Factory wants a callable taking a plain socket -> wrapped TLS socket.
+ssl_factory = Factory(
+    wrapper=lambda sock: ssl_context.wrap_socket(sock, server_hostname=IRC_HOST)
+)
+
 reactor = Reactor()
 try:
     irc_c = reactor.server().connect(
-        "irc.libera.chat",
-        6697,
+        IRC_HOST,
+        IRC_PORT,
         USERNAME,
         username=USERNAME,
         password=PASSWORD,
