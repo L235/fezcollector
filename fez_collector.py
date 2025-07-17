@@ -17,9 +17,7 @@ from pywikibot.comms.eventstreams import EventStreams
 from pywikibot import Site, Page
 
 TARGET = environ.get("FEZ_COLLECTOR_TARGET")
-NICKNAME = environ.get("FEZ_COLLECTOR_NICKNAME") or environ.get(
-    "FEZ_COLLECTOR_USERNAME"
-)
+NICKNAME = environ.get("FEZ_COLLECTOR_NICKNAME")
 USERNAME = environ.get("FEZ_COLLECTOR_USERNAME")
 PASSWORD = environ.get("FEZ_COLLECTOR_PASSWORD")
 CLOAK = environ.get("FEZ_COLLECTOR_CLOAK")
