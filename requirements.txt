@@ -2,3 +2,4 @@ pywikibot
 irc
 irccodes
 sseclient
+requests-sse
