@@ -66,12 +66,12 @@ USER_INCLUDE_LIST = config["userIncludeList"]
 def format_message(_change):
     actor = f"{colored(_change['user'], 'Green', padding=ZWS)}"
     if _change["type"] == "log":
-        link = f"https://{_change['server_name']}/w/index.php?title=Special:Log&logid={_change['log_id']}"
+        link = f"<https://{_change['server_name']}/w/index.php?title=Special:Log&logid={_change['log_id']}>"
         return f"{actor} {_change['log_action_comment']} {link}"
 
     target = f"{colored('[[','Grey', padding='')}{colored(_change['title'].strip(), 'Orange', padding='')}{colored(']]:','Grey', padding='')}"
     _comment = f"{colored(_change['comment'], 'Cyan', padding='')}"
-    link = f"https://{_change['server_name']}/w/index.php?diff={_change['revision']['new']}"
+    link = f"<https://{_change['server_name']}/w/index.php?diff={_change['revision']['new']}>"
     return f"{actor} edited {target} {_comment} {link}"
 
 
